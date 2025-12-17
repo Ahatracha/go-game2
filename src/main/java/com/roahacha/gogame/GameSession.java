@@ -29,11 +29,6 @@ public class GameSession implements Runnable {
 
         this.gameBoard = new GameBoard();
 
-        Board boardOne = new Board();
-        Board boardTwo = new Board();
-        gameBoard.connectPlayerBoards(boardOne, boardTwo);
-
-
     }
     @Override
     public void run() {

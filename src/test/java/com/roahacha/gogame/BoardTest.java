@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
-import com.roahacha.gogame.Common.Board;
 import com.roahacha.gogame.Common.GameBoard;
 import com.roahacha.gogame.Common.Stone;
 
@@ -45,9 +44,6 @@ public class BoardTest {
 
     private GameBoard setupGameBoard() {
         GameBoard gameBoard = new GameBoard();
-        Board player1 = new Board();
-        Board player2 = new Board();
-        gameBoard.connectPlayerBoards(player1, player2);
 
         return gameBoard;
     }

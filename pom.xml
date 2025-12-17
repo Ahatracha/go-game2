@@ -39,4 +39,28 @@
     </dependency>
   </dependencies>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.6.2</version>
+        <executions>
+          <execution>
+            <id>server-cli</id>
+            <configuration>
+              <mainClass>com.roahacha.gogame.Server</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>client-cli</id>
+            <configuration>
+              <mainClass>com.roahacha.gogame.Client</mainClass>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
 </project>

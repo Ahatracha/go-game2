@@ -5,8 +5,6 @@ import com.roahacha.gogame.Common.GameBoard;
 import com.roahacha.gogame.Common.Stone;
 
 import javax.swing.*;
-import javax.swing.border.LineBorder;
-import java.awt.*;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -30,7 +28,8 @@ public class Client extends JFrame implements Runnable {
     private boolean myTurn = false;
     private Stone mystone = Stone.NONE;
     private Stone hisstone = Stone.NONE;
-    private GameBoard board;
+    Board board;
+    //private GameBoard board;
 
     private boolean continueToPlay = true;
     private Scanner inputScanner = new Scanner(System.in);
@@ -49,7 +48,7 @@ public class Client extends JFrame implements Runnable {
     public Client(){
         board = new GameBoard();
 
-        board.connectPlayerBoards(new Board(), new Board());
+        //board.connectPlayerBoards(new Board(), new Board());
     }
     private void connectToServer() {
         try {
