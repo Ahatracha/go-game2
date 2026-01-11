@@ -78,12 +78,16 @@ public class Board {
         int breaths = 4;
         if (height - 1 >= 0 && grid[height - 1][length] != Stone.NONE)
             breaths--;
+        if (height - 1 < 0) breaths--;
         if (length + 1 < gridWidth && grid[height][length + 1] != Stone.NONE)
             breaths--;
+        if (length + 1 >= gridWidth) breaths--;
         if (height + 1 < gridWidth && grid[height + 1][length] != Stone.NONE)
             breaths--;
+        if (height + 1 >= gridWidth) breaths--;
         if (length - 1 >= 0 && grid[height][length - 1] != Stone.NONE)
             breaths--;
+        if (length - 1 < 0) breaths--;
 
         return breaths;
     }
@@ -95,6 +99,28 @@ public class Board {
         if (grid[height][length] != Stone.NONE)     return false;
         //boolean public checkCapture(width, length);
         if (countFreeSpaces(height, length) == 0)   return false;
+        return true;
+    }
+
+    
+    private void removeIfInvalid(int height, int length) {
+        if (countFreeSpaces(height, length) == 0) {
+            grid[height][length] = Stone.NONE;
+            tileUsed[height][length] = true;
+        }
+    }
+
+    public boolean placeStone(int height, int length, Stone stone) {
+        if (countFreeSpaces(height, length) == 0)   return false;
+        grid[height][length] = stone;
+        tileUsed[height][length] = true;
+
+        if (height - 1 >= 0)            removeIfInvalid(height - 1, length);
+        if (length + 1 < gridWidth)     removeIfInvalid(height, length + 1);
+        if (height + 1 < gridWidth)     removeIfInvalid(height + 1, length);
+        if (length - 1 >= 0)            removeIfInvalid(height, length - 1);
+
+
         return true;
     }
 

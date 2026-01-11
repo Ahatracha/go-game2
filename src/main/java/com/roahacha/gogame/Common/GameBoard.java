@@ -3,24 +3,18 @@ package com.roahacha.gogame.Common;
 // Made for server
 // Handle game rules and applies them on board
 public class GameBoard extends Board {
-    Board boardOne;
-    Board boardTwo;
 
-    private void updatePlayerBoards() {
-        for (int i = 0; i < gridWidth; i++)
-            for (int j = 0; j < gridWidth; j++) {
-                boardOne.grid[i][j] = this.grid[i][j];
-                boardTwo.grid[i][j] = this.grid[i][j];
-            }
+
+    public Stone[][] getGrid() {
+        Stone[][] arr = new Stone[gridWidth][gridWidth];
+        for (int i = 0; i < gridWidth * gridWidth; i++)
+            arr[i/gridWidth][i%gridWidth] = grid[i/gridWidth][i%gridWidth];
+        return arr;
     }
 
     public GameBoard() {}
 
-    public void connectPlayerBoards(Board boardOne, Board boardTwo) {
-        this.boardOne = boardOne;
-        this.boardTwo = boardTwo;
-    }
-    
+    /*
     private void removeIfInvalid(int height, int length) {
         if (countFreeSpaces(height, length) == 0) {
             grid[height][length] = Stone.NONE;
@@ -43,4 +37,5 @@ public class GameBoard extends Board {
 
         return true;
     }
+        */
 }
