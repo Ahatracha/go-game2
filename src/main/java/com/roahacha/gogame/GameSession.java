@@ -1,8 +1,6 @@
 package com.roahacha.gogame;
 
-import com.roahacha.gogame.Common.Board;
-import com.roahacha.gogame.Common.GameBoard;
-import com.roahacha.gogame.Common.Stone;
+import com.roahacha.gogame.Common.*;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -13,104 +11,81 @@ import java.net.Socket;
 // Connects Users via Server
 public class GameSession implements Runnable {
 
-    private Socket firstPlayer;
-    private Socket secondPlayer;
+    private final PlayerController    firstPlayer;
+    private final PlayerController    secondPlayer;
     private GameBoard gameBoard;
-    boolean isEnded=false;
 
-    public static int PLAYER1_WON = 1;
-    public static int PLAYER2_WON = 2;
-    public static int DRAW = 3;
-    public static int CONTINUE = 4;
+    
+    // public static int PLAYER1_WON = 3;
+    // public static int PLAYER2_WON = 4;
+    // public static int DRAW = 5;
+    // public static int CONTINUE = 6;
 
-    public GameSession(Socket firstPlayer, Socket secondPlayer) {
-        this.firstPlayer = firstPlayer;
-        this.secondPlayer = secondPlayer;
-
+    public GameSession(Socket firstPlayer, Socket secondPlayer) throws IOException {
+        this.firstPlayer = new PlayerController(secondPlayer, Stone.BLACK);
+        this.secondPlayer = new PlayerController(secondPlayer, Stone.WHITE);
         this.gameBoard = new GameBoard();
 
     }
     @Override
     public void run() {
-        try{
-            DataInputStream fromPlayer1 = new DataInputStream(firstPlayer.getInputStream());
-            DataOutputStream toPlayer1 = new DataOutputStream(firstPlayer.getOutputStream());
-            DataInputStream fromPlayer2 = new DataInputStream(secondPlayer.getInputStream());
-            DataOutputStream toPlayer2 = new DataOutputStream(secondPlayer.getOutputStream());
-            //powiadomienie dla gracza 1 że dołączył
-            toPlayer1.writeInt(1);
+        try (firstPlayer; secondPlayer) {
+            // Informacje o kamieniach dla gracza
+            // 1 = Czarne, 2 = Białe
+            firstPlayer.sendStoneInfo(1);
+            secondPlayer.sendStoneInfo(2);
 
-            toPlayer2.writeInt(2);
-            //powiadomienie dla gracza 1 że gracz 2 dołączył
-            toPlayer1.writeInt(1);
+            boolean gameLoop =  true;
+            boolean isBlackTurn = true;
 
-            //main game loop
-            while(true){
-                //tura czarnego ----
-                boolean moveMade = false;
-                while (!moveMade) {
+            // Main game loop
+            while (gameLoop){
+                PlayerController currentPlayer =    isBlackTurn ? firstPlayer : secondPlayer;
+                PlayerController opponentPlayer =   isBlackTurn ? secondPlayer : firstPlayer;
 
-                    int row = fromPlayer1.readInt();
-                    int col = fromPlayer1.readInt();
-                    if (gameBoard.checkMoveValidity(row, col, Stone.BLACK)){
-                        if (gameBoard.placeStone(row, col, Stone.BLACK)) {
-                            moveMade = true;
-                            toPlayer1.writeInt(CONTINUE);
-                            toPlayer2.writeInt(CONTINUE);
+                PlayerAction action = currentPlayer.waitForDecision();
 
-                            sendMove(toPlayer1, row, col);
-                            sendMove(toPlayer2, row, col);
-
-                            //checkAndSendCaptures(toPlayer1, toPlayer2);
-                        } else {
-                            System.out.println("Błąd logiczny przy placeStone dla P1");
-                        }
-
-                    } else {
-                        System.out.println("Nieprawidłowy ruch gracza 1: " + row + ", " + col);
-                    }
-
-                }
-                //-------Tura białego
-                moveMade = false;
-                while (!moveMade) {
-                    int row = fromPlayer2.readInt();
-                    int col = fromPlayer2.readInt();
-                    if(gameBoard.checkMoveValidity(row, col, Stone.WHITE)){
-                        if (gameBoard.placeStone(row, col, Stone.WHITE)) {
-                            moveMade = true;
-                            toPlayer2.writeInt(CONTINUE);
-                            toPlayer1.writeInt(CONTINUE);
-                            sendMove(toPlayer2, row, col);
-                            sendMove(toPlayer1, row, col);
-
-                            //checkAndSendCaptures(toPlayer1, toPlayer2);
-                        } else {
-                            System.out.println("Błąd logiczny przy placeStone dla P2");
-                        }
-
-                    }else {
-                        System.out.println("Nieprawidłowy ruch gracza 2: " + row + ", " + col);
-                    }
-
+                switch (action) {
+                    case MOVE:
+                        if (handleMove(currentPlayer, opponentPlayer))
+                            isBlackTurn = !isBlackTurn;
+                        break;
+                    case PASS:
+                        isBlackTurn = !isBlackTurn;
+                        break;
+                    case SURRENDER:
+                        // TODO: Display that [opponentPlayer] won
+                        gameLoop = false;
+                        break;
+                    default:    // QUIT or UNKNOWN
+                        // TODO: Display [currentPlayer] lost connection
+                        gameLoop = false;
+                        break;
                 }
 
+               
             }
-        }catch(IOException ex) {
-            System.err.println("exeption");
+        }catch(Exception ex) {
+            ex.printStackTrace();
         }
-
-
     }
-//    private boolean isEnded(char c) {
-//
-//    }
-    private void sendMove(DataOutputStream out, int row, int col) throws IOException {
-        out.writeInt(row);
-        out.writeInt(col);
-    }
-    private void checkAndSendCaptures(DataOutputStream out1, DataOutputStream out2) throws IOException{
 
+    // returns true on success
+    // false otherwise
+    private boolean handleMove(PlayerController p1, PlayerController p2) {
+        int[] cords = p1.getMovePlace();
+        int row = cords[0];
+        int col = cords[1];
+
+        MoveCommand command = new MoveCommand(gameBoard, row, col, p1.getStone());
+        command.execute();
+
+        if (command.isSuccessful()) {
+            // TODO: update grids
+
+            return true;
+        }
+        return false;
     }
-    
+
 }
