@@ -1,190 +1,92 @@
 package com.roahacha.gogame;
 
-import com.roahacha.gogame.Common.Board;
-import com.roahacha.gogame.Common.GameBoard;
-import com.roahacha.gogame.Common.Stone;
+import com.roahacha.gogame.Common.*;
 
-import javax.swing.*;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Scanner;
+import javafx.application.Application;
 
-public class Client extends JFrame implements Runnable {
+public class Client extends Application implements GameClientObserver {
     final int port = 12543;
+    final int gridSize;
     final String host = "localhost";
 
-    //statusy gry
-    public static final int PLAYER1 = 1;
-    public static final int PLAYER2 = 2;
-    public static final int PLAYER1_WON = 1;
-    public static final int PLAYER2_WON = 2;
-    public static final int DRAW = 3;
-    public static final int CONTINUE = 4;
+    private ServerProxy server;
+    private Board board;
+    private Stone myStone;
+    //private boolean myTurn = true;
 
+    @Override
+    public void start(Stage stage) {
+        board = new Board();
+        gridSize = board.getSize();
+        // TODO: GUI
 
-
-    private boolean myTurn = false;
-    private Stone mystone = Stone.NONE;
-    private Stone hisstone = Stone.NONE;
-    Board board;
-    //private GameBoard board;
-
-    private boolean continueToPlay = true;
-    private Scanner inputScanner = new Scanner(System.in);
-
-    //czekam na system po jakiemu to wprowadzamy
-    private int rowSelected;
-    private int columnSelected;
-
-    private Socket socket;
-    private DataInputStream fromServer;
-    private DataOutputStream toServer;
-
-
-    private boolean waiting = true;
-
-    public Client(){
-        board = new GameBoard();
-
-        //board.connectPlayerBoards(new Board(), new Board());
-    }
-    private void connectToServer() {
         try {
-            System.out.println("Łączenie z serwerem...");
-            socket = new Socket(host, port);
-            fromServer = new DataInputStream(socket.getInputStream());
-            toServer = new DataOutputStream(socket.getOutputStream());
+            server = new ServerProxy(new SocketFacade(new Socket(host, port)), this);
+        } catch (IOException e) {
+            System.err.println("Nie można połączyć się z serwerem: " + e.getMessage());
+            e.printStackTrace();
         }
-        catch (IOException ex) {
-            System.err.println(ex);
-        }
-
-        Thread thread = new Thread(this);
-        thread.start();
-    }
-    public static void main(String[] args) {
-        new Client().connectToServer();
     }
 
     @Override
-    public void run() {
-        try {
-            //read which player
-            int player = fromServer.readInt();
-
-            //if first player set the token to X and wait for second player to join
-            if(player == PLAYER1) {
-                mystone = Stone.BLACK;
-                hisstone = mystone.oppositeStone();
-                System.out.println("Jesteś GRACZEM 1 (Czarne). Oczekiwanie na drugiego gracza...");
-
-
-                //notification that player 2 joined
-                fromServer.readInt();
-                System.out.println("Gracz 2 dołączył. Gra się rozpoczyna!");
-                System.out.println("Twoja tura (Czarne).");
-
-
+    public void onGameStart(GameAction action) {
+        switch (action) {
+            case GAME_STONE_BLACK:
+                myStone = Stone.BLACK;
                 //myTurn = true;
-            }
-            //if second player then game can start
-            else if (player == PLAYER2) {
-                mystone = Stone.WHITE;
-                hisstone = mystone.oppositeStone();
-                System.out.println("Jesteś GRACZEM 2 (Białe).");
-                System.out.println("Oczekiwanie na ruch przeciwnika (Czarne)...");
-
-            }
-            printBoard();
-
-            while (continueToPlay) {
-                if (player == PLAYER1) {
-                    doMove();
-                    waitForPlayerAction();
-
-                }
-                else if (player == PLAYER2) {
-                    waitForPlayerAction();
-                    doMove();
-                }
-            }
+                break;
+            case GAME_STONE_WHITE:
+                myStone = Stone.WHITE;
+                //myTurn = false;
+                break;
+            default:
+                break;
         }
-        catch (IOException ex) {
-            System.err.println("Rozłączono z serwerem.");
-        }
-    }
-    private void doMove() throws IOException{
-        if (!continueToPlay) return;
-        System.out.println("TWÓJ RUCH (" + (mystone == Stone.BLACK ? "●" : "○") + ")");
-        boolean validLocalInput = false;
-        int row = -1, col = -1;
-
-        while (!validLocalInput){
-            System.out.print("Podaj rząd i kolumnę (np. 3 4): ");
-            try{
-                if (inputScanner.hasNextInt()) {
-                    row = inputScanner.nextInt();
-                    col = inputScanner.nextInt();
-                    if (board.checkMoveValidity(row, col, mystone)) {
-                        validLocalInput = true;
-                    } else {
-                        System.out.println("Ruch niedozwolony (zajęte pole lub brak oddechu). Spróbuj ponownie.");
-                    }
-                } else {
-                    inputScanner.next(); // wyczyszczenie bufora
-                }
-
-
-            }catch (Exception ex){
-                System.out.println("Błąd wprowadzania. Podaj dwie liczby.");
-                inputScanner.nextLine();
-            }
-        }
-        toServer.writeInt(row);
-        toServer.writeInt(col);
-
-        int status = fromServer.readInt();
-        receiveMoveUpdate(status, mystone);
-    }
-    private void waitForPlayerAction() throws IOException {
-        if (!continueToPlay) return;
-        System.out.println("Czekam na ruch przeciwnika...");
-
-        int status = fromServer.readInt();
-
-        receiveMoveUpdate(status, hisstone);
+        // TODO: Update GUI
     }
 
+    @Override
+    public void onStonePlaced(int row, int col, Stone stone) {
+        // TODO: Update GUI
+    }
 
-    private void receiveMoveUpdate(int status, Stone stone) throws IOException {
-        if (status == PLAYER1_WON){
-            continueToPlay = false;
-            if (mystone == Stone.BLACK) System.out.println("WYGRAŁEŚ! (Przeciwnik się poddał lub wygrałeś)");
-            else System.out.println("PRZEGRAŁEŚ.");
-        } else if (status == PLAYER2_WON) {
-            continueToPlay = false;
-            if (mystone == Stone.WHITE) System.out.println("WYGRAŁEŚ!");
-            else System.out.println("PRZEGRAŁEŚ.");
-        } else if (status == DRAW) {
-            continueToPlay = false;
-            System.out.println("REMIS.");
-        } else {
-            //dla status == continiue
-            int r = fromServer.readInt();
-            int c = fromServer.readInt();
+    @Override
+    public void onBoardUpdate(Stone[][] grid) {
+        board.updateGrid(grid);
+        // TODO: Update GUI
+    }
 
-            board.placeStone(r, c, stone);
-            printBoard();
-
-
+    @Override
+    public void onGameAction(GameAction action) {
+        switch (action) {
+            case GAME_END_WIN:
+                // TODO: Update GUI
+                break;
+            case GAME_END_LOSS:
+                // TODO: Update GUI
+                break;
+            case GAME_END_DRAW:
+                // TODO: Update GUI
+                break;
+            case GAME_YOUR_TURN:
+                //myTurn = true;
+                // TODO: Update GUI
+                break;
         }
     }
-    private void printBoard() {
-        System.out.println("\n-----------------------------");
-        System.out.println(board.toString());
-        System.out.println("-----------------------------");
+
+    @Override
+    public void stop() throws Exception {
+        if (server != null) {
+            server.close();
+        }
+    }
+
+    public static void main(String[] args) {
+        launch(args);
     }
 
 }

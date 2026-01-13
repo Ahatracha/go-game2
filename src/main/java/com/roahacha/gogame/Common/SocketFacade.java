@@ -32,17 +32,6 @@ public class SocketFacade implements AutoCloseable {
         }
     }
 
-    public void sendMove(int x, int y) {
-        sendInt(x);
-        sendInt(y);
-    }
-
-    public int[] reciveMove() {
-        int x = readInt();
-        int y = readInt();
-        return new int[] {x, y};
-    }
-
     private void handleConnectionError(IOException e) {
         System.err.println("Błąd połączenia: " + e.getMessage());
         throw new RuntimeException("Stracono połączenie", e);

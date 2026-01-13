@@ -2,8 +2,6 @@ package com.roahacha.gogame;
 
 import com.roahacha.gogame.Common.*;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
@@ -15,54 +13,68 @@ public class GameSession implements Runnable {
     private final PlayerController    secondPlayer;
     private GameBoard gameBoard;
 
-    
-    // public static int PLAYER1_WON = 3;
-    // public static int PLAYER2_WON = 4;
-    // public static int DRAW = 5;
-    // public static int CONTINUE = 6;
-
     public GameSession(Socket firstPlayer, Socket secondPlayer) throws IOException {
-        this.firstPlayer = new PlayerController(secondPlayer, Stone.BLACK);
+        this.firstPlayer = new PlayerController(firstPlayer, Stone.BLACK);
         this.secondPlayer = new PlayerController(secondPlayer, Stone.WHITE);
         this.gameBoard = new GameBoard();
-
     }
+
     @Override
     public void run() {
         try (firstPlayer; secondPlayer) {
             // Informacje o kamieniach dla gracza
             // 1 = Czarne, 2 = Białe
-            firstPlayer.sendStoneInfo(1);
-            secondPlayer.sendStoneInfo(2);
+            //firstPlayer.sendAction(GameAction.GAME_STONE_BLACK);
+            //secondPlayer.sendAction(GameAction.GAME_STONE_WHITE);
+            firstPlayer.sendAction(GameAction.GAME_YOUR_TURN);
 
             boolean gameLoop =  true;
             boolean isBlackTurn = true;
+            int playerPassCount = 0;
 
             // Main game loop
             while (gameLoop){
                 PlayerController currentPlayer =    isBlackTurn ? firstPlayer : secondPlayer;
                 PlayerController opponentPlayer =   isBlackTurn ? secondPlayer : firstPlayer;
 
-                PlayerAction action = currentPlayer.waitForDecision();
+                GameAction action = currentPlayer.waitForDecision();
 
                 switch (action) {
-                    case MOVE:
+                    case PLAYER_MOVE:
+                        playerPassCount = 0;
                         if (handleMove(currentPlayer, opponentPlayer))
                             isBlackTurn = !isBlackTurn;
                         break;
-                    case PASS:
+                    case PLAYER_PASS:
+                        playerPassCount++;
+                        opponentPlayer.sendAction(GameAction.GAME_YOUR_TURN);
                         isBlackTurn = !isBlackTurn;
                         break;
-                    case SURRENDER:
-                        // TODO: Display that [opponentPlayer] won
+                    case PLAYER_SURRENDER:
+                        playerPassCount = 0;
+                        opponentPlayer.sendAction(GameAction.GAME_END_WIN);
+                        currentPlayer.sendAction(GameAction.GAME_END_LOSS);
                         gameLoop = false;
                         break;
                     default:    // QUIT or UNKNOWN
-                        // TODO: Display [currentPlayer] lost connection
+                        opponentPlayer.sendAction(GameAction.GAME_END_WIN);
                         gameLoop = false;
                         break;
                 }
-
+                if (playerPassCount >= 2) {
+                    gameLoop = false;
+                    int points[] = gameBoard.calculatePoints();
+                    if (points[0] > points[1]) {
+                        firstPlayer.sendAction(GameAction.GAME_END_WIN);
+                        secondPlayer.sendAction(GameAction.GAME_END_LOSS);
+                    } else if (points[1] > points[0]) {
+                        firstPlayer.sendAction(GameAction.GAME_END_LOSS);
+                        secondPlayer.sendAction(GameAction.GAME_END_WIN);
+                    } else {
+                        firstPlayer.sendAction(GameAction.GAME_END_DRAW);
+                        secondPlayer.sendAction(GameAction.GAME_END_DRAW);
+                    }
+                }
                
             }
         }catch(Exception ex) {
@@ -72,19 +84,23 @@ public class GameSession implements Runnable {
 
     // returns true on success
     // false otherwise
-    private boolean handleMove(PlayerController p1, PlayerController p2) {
-        int[] cords = p1.getMovePlace();
+    private boolean handleMove(PlayerController current, PlayerController opponent) {
+        int[] cords = current.reciveMove();
         int row = cords[0];
         int col = cords[1];
 
-        MoveCommand command = new MoveCommand(gameBoard, row, col, p1.getStone());
+        MoveCommand command = new MoveCommand(gameBoard, row, col, current.getStone());
         command.execute();
 
         if (command.isSuccessful()) {
-            // TODO: update grids
-
+            current.sendAction(GameAction.GAME_SEND_GRID);
+            current.sendBoardState(gameBoard);
+            opponent.sendAction(GameAction.GAME_SEND_GRID);
+            opponent.sendBoardState(gameBoard);
+            opponent.sendAction(GameAction.GAME_YOUR_TURN);
             return true;
         }
+        current.sendAction(GameAction.GAME_INCORRENT_MOVE);
         return false;
     }
 
