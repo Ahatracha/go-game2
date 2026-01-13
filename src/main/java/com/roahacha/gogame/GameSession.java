@@ -15,15 +15,14 @@ public class GameSession implements Runnable {
     private final PlayerController    secondPlayer;
     private GameBoard gameBoard;
 
-    
-    // public static int PLAYER1_WON = 3;
-    // public static int PLAYER2_WON = 4;
-    // public static int DRAW = 5;
-    // public static int CONTINUE = 6;
+    public static final int CONTINUE = 4;
+    public static final int PLAYER1_WON = 1;
+    public static final int PLAYER2_WON = 2;
 
-    public GameSession(Socket firstPlayer, Socket secondPlayer) throws IOException {
-        this.firstPlayer = new PlayerController(secondPlayer, Stone.BLACK);
-        this.secondPlayer = new PlayerController(secondPlayer, Stone.WHITE);
+
+    public GameSession(Socket firstPlayerSocket, Socket secondPlayerSocket) throws IOException {
+        this.firstPlayer = new PlayerController(firstPlayerSocket, Stone.BLACK);
+        this.secondPlayer = new PlayerController(secondPlayerSocket, Stone.WHITE);
         this.gameBoard = new GameBoard();
 
     }
@@ -35,26 +34,30 @@ public class GameSession implements Runnable {
             firstPlayer.sendStoneInfo(1);
             secondPlayer.sendStoneInfo(2);
 
+            firstPlayer.getOut().writeInt(1);
+
             boolean gameLoop =  true;
             boolean isBlackTurn = true;
 
             // Main game loop
-            while (gameLoop){
-                PlayerController currentPlayer =    isBlackTurn ? firstPlayer : secondPlayer;
-                PlayerController opponentPlayer =   isBlackTurn ? secondPlayer : firstPlayer;
+            while (gameLoop) {
+                PlayerController currentPlayer = isBlackTurn ? firstPlayer : secondPlayer;
+                PlayerController opponentPlayer = isBlackTurn ? secondPlayer : firstPlayer;
 
                 PlayerAction action = currentPlayer.waitForDecision();
 
                 switch (action) {
                     case MOVE:
-                        if (handleMove(currentPlayer, opponentPlayer))
+                        if (handleMove(currentPlayer, opponentPlayer)) {
                             isBlackTurn = !isBlackTurn;
+                        }
                         break;
                     case PASS:
                         isBlackTurn = !isBlackTurn;
                         break;
                     case SURRENDER:
                         // TODO: Display that [opponentPlayer] won
+                        sendGameOver(currentPlayer == firstPlayer ? PLAYER2_WON : PLAYER1_WON);
                         gameLoop = false;
                         break;
                     default:    // QUIT or UNKNOWN
@@ -81,11 +84,35 @@ public class GameSession implements Runnable {
         command.execute();
 
         if (command.isSuccessful()) {
-            // TODO: update grids
+            try {
+                // DODANO: Kluczowa zmiana dla GUI.
+                // Serwer musi wysłać potwierdzenie do OBU graczy po udanym ruchu.
 
-            return true;
+                // Powiadomienie gracza, który wykonał ruch
+                p1.getOut().writeInt(CONTINUE);
+                p1.getOut().writeInt(row);
+                p1.getOut().writeInt(col);
+                p1.getOut().flush();
+
+                // Powiadomienie przeciwnika o ruchu
+                p2.getOut().writeInt(CONTINUE);
+                p2.getOut().writeInt(row);
+                p2.getOut().writeInt(col);
+                p2.getOut().flush();
+
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            // TODO: wysłać informację o błędnym ruchu tylko do currentPlayer
         }
         return false;
     }
 
+        private void sendGameOver ( int status) throws IOException {
+            firstPlayer.getOut().writeInt(status);
+            secondPlayer.getOut().writeInt(status);
+        }
+    }
 }

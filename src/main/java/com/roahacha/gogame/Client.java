@@ -3,7 +3,8 @@ package com.roahacha.gogame;
 import com.roahacha.gogame.Common.Board;
 import com.roahacha.gogame.Common.GameBoard;
 import com.roahacha.gogame.Common.Stone;
-
+import javafx.application.Platform;
+import javafx.scene.paint.Color;
 import javax.swing.*;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -32,7 +33,10 @@ public class Client extends JFrame implements Runnable {
     //private GameBoard board;
 
     private boolean continueToPlay = true;
-    private Scanner inputScanner = new Scanner(System.in);
+    //private Scanner inputScanner = new Scanner(System.in);
+
+    private GUI guiBoard;
+
 
     //czekam na system po jakiemu to wprowadzamy
     private int rowSelected;
@@ -45,8 +49,9 @@ public class Client extends JFrame implements Runnable {
 
     private boolean waiting = true;
 
-    public Client(){
+    public Client(GUI gui){
         board = new GameBoard();
+        this.guiBoard = gui;
 
         //board.connectPlayerBoards(new Board(), new Board());
     }
@@ -64,8 +69,19 @@ public class Client extends JFrame implements Runnable {
         Thread thread = new Thread(this);
         thread.start();
     }
-    public static void main(String[] args) {
-        new Client().connectToServer();
+//    public static void main(String[] args) {
+//        new Client().connectToServer();
+//    }
+    public void sendMove(int row, int col) {
+        if (myTurn && continueToPlay) {
+            try {
+                toServer.writeInt(row);
+                toServer.writeInt(col);
+                toServer.flush();
+            } catch (IOException ex) {
+                System.err.println("Błąd wysyłania ruchu: " + ex);
+            }
+        }
     }
 
     @Override
@@ -85,9 +101,9 @@ public class Client extends JFrame implements Runnable {
                 fromServer.readInt();
                 System.out.println("Gracz 2 dołączył. Gra się rozpoczyna!");
                 System.out.println("Twoja tura (Czarne).");
+                myTurn = true;
 
 
-                //myTurn = true;
             }
             //if second player then game can start
             else if (player == PLAYER2) {
@@ -95,96 +111,52 @@ public class Client extends JFrame implements Runnable {
                 hisstone = mystone.oppositeStone();
                 System.out.println("Jesteś GRACZEM 2 (Białe).");
                 System.out.println("Oczekiwanie na ruch przeciwnika (Czarne)...");
-
+                myTurn = false;
             }
-            printBoard();
 
             while (continueToPlay) {
-                if (player == PLAYER1) {
-                    doMove();
-                    waitForPlayerAction();
-
-                }
-                else if (player == PLAYER2) {
-                    waitForPlayerAction();
-                    doMove();
-                }
+                int status = fromServer.readInt();
+                receiveMoveUpdate(status);
             }
-        }
-        catch (IOException ex) {
+        } catch (IOException ex) {
             System.err.println("Rozłączono z serwerem.");
         }
+
+
     }
-    private void doMove() throws IOException{
-        if (!continueToPlay) return;
-        System.out.println("TWÓJ RUCH (" + (mystone == Stone.BLACK ? "●" : "○") + ")");
-        boolean validLocalInput = false;
-        int row = -1, col = -1;
 
-        while (!validLocalInput){
-            System.out.print("Podaj rząd i kolumnę (np. 3 4): ");
-            try{
-                if (inputScanner.hasNextInt()) {
-                    row = inputScanner.nextInt();
-                    col = inputScanner.nextInt();
-                    if (board.checkMoveValidity(row, col, mystone)) {
-                        validLocalInput = true;
-                    } else {
-                        System.out.println("Ruch niedozwolony (zajęte pole lub brak oddechu). Spróbuj ponownie.");
-                    }
-                } else {
-                    inputScanner.next(); // wyczyszczenie bufora
-                }
-
-
-            }catch (Exception ex){
-                System.out.println("Błąd wprowadzania. Podaj dwie liczby.");
-                inputScanner.nextLine();
-            }
-        }
-        toServer.writeInt(row);
-        toServer.writeInt(col);
-
-        int status = fromServer.readInt();
-        receiveMoveUpdate(status, mystone);
-    }
     private void waitForPlayerAction() throws IOException {
         if (!continueToPlay) return;
         System.out.println("Czekam na ruch przeciwnika...");
 
         int status = fromServer.readInt();
 
-        receiveMoveUpdate(status, hisstone);
+        receiveMoveUpdate(status);
     }
 
 
-    private void receiveMoveUpdate(int status, Stone stone) throws IOException {
-        if (status == PLAYER1_WON){
-            continueToPlay = false;
-            if (mystone == Stone.BLACK) System.out.println("WYGRAŁEŚ! (Przeciwnik się poddał lub wygrałeś)");
-            else System.out.println("PRZEGRAŁEŚ.");
-        } else if (status == PLAYER2_WON) {
-            continueToPlay = false;
-            if (mystone == Stone.WHITE) System.out.println("WYGRAŁEŚ!");
-            else System.out.println("PRZEGRAŁEŚ.");
-        } else if (status == DRAW) {
-            continueToPlay = false;
-            System.out.println("REMIS.");
-        } else {
-            //dla status == continiue
+    private void receiveMoveUpdate(int status) throws IOException {
+        if (status == CONTINUE) {
             int r = fromServer.readInt();
             int c = fromServer.readInt();
 
-            board.placeStone(r, c, stone);
-            printBoard();
+            Stone stoneToPlace = (myTurn) ? mystone : hisstone;
 
+            board.placeStone(r, c, stoneToPlace);
 
+            Platform.runLater(() -> {
+                Color color = (stoneToPlace == Stone.BLACK) ? Color.BLACK : Color.WHITE;
+                guiBoard.MakeColor(r, c, color);
+            });
+
+            myTurn = !myTurn;
+            System.out.println("Ruch na: " + r + ", " + c + " (" + stoneToPlace + ")");
+
+        } else if (status == PLAYER1_WON || status == PLAYER2_WON || status == DRAW) {
+            continueToPlay = false;
+            System.out.println("Koniec gry. Status: " + status);
         }
     }
-    private void printBoard() {
-        System.out.println("\n-----------------------------");
-        System.out.println(board.toString());
-        System.out.println("-----------------------------");
-    }
+    public boolean isMyTurn() { return myTurn; }
 
 }
