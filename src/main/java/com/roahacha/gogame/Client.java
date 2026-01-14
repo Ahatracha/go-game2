@@ -5,6 +5,8 @@ import javafx.application.Platform;
 import java.io.IOException;
 import java.net.Socket;
 
+import javafx.application.Platform;
+
 public class Client implements GameClientObserver {
     final int port = 12543;
     final String host = "localhost";

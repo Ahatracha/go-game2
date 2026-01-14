@@ -31,6 +31,7 @@ public class ServerProxy implements AutoCloseable {
     }
 
     public void sendMove(int row, int col) {
+        sendAction(GameAction.PLAYER_MOVE);
         connection.sendInt(row);
         connection.sendInt(col);
     }
@@ -41,7 +42,7 @@ public class ServerProxy implements AutoCloseable {
             for (int col = 0; col < size; col++) {
                 int stoneValue = connection.readInt();
                 if (stoneValue == 0) {
-                    grid[row][col] = null;
+                    grid[row][col] = Stone.NONE;
                 } else if (stoneValue == 1) {
                     grid[row][col] = Stone.BLACK;
                 } else if (stoneValue == 2) {
@@ -55,9 +56,12 @@ public class ServerProxy implements AutoCloseable {
     private void listenLoop() {
         try {
             GameAction startAction = reciveAction();
+            System.out.println(startAction);
+            //GameAction startAction = reciveAction();
+
             Stone myStone;
             switch (startAction) {
-                case GAME_STONE_BLACK: 
+                case GAME_STONE_BLACK:
                     myStone = Stone.BLACK;
                     break;
                 case GAME_STONE_WHITE:

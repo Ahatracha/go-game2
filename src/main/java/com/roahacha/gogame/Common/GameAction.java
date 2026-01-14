@@ -7,14 +7,14 @@ public enum GameAction {
     PLAYER_SURRENDER(3),
     PLAYER_QUIT(4),
     // GAME_* actions are sent by the server
-    GAME_STONE_BLACK(4),
-    GAME_STONE_WHITE(5),
-    GAME_SEND_GRID(6),
-    GAME_END_WIN(7),
-    GAME_END_LOSS(8),
-    GAME_END_DRAW(9),
-    GAME_YOUR_TURN(10),
-    GAME_INCORRENT_MOVE(11),
+    GAME_STONE_BLACK(5),
+    GAME_STONE_WHITE(6),
+    GAME_SEND_GRID(7),
+    GAME_END_WIN(8),
+    GAME_END_LOSS(9),
+    GAME_END_DRAW(10),
+    GAME_YOUR_TURN(11),
+    GAME_INCORRENT_MOVE(12),
     // Special action for unknown/invalid commands
     UNKNOWN(-1);
 

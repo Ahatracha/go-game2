@@ -8,6 +8,7 @@ public class GameBoard extends Board {
 
     // previous state of the board for KOI rule
     private Stone[][] previousGrid = null;
+    private Stone[][] morePreviousGrid = null;
 
     public GameBoard() {
         clearTileUsed();
@@ -26,33 +27,44 @@ public class GameBoard extends Board {
                 tileUsed[i][j] = false;
     }
 
+    private void updatePreviousGrids() {
+        morePreviousGrid = previousGrid;
+        previousGrid = getGrid();
+    }
+
     // calculates number of breaths for chain including stone at grid[height][length]
     // after invoking first recursion of funtion, set whole tileUsed[][] to false
-    private int numOfBreaths(int height, int length, Stone stone) {
-        if (tileUsed[height][length]) return -1;
+    public int numOfBreaths(int height, int length, Stone stone) {
+
+        if (height < 0 || height >= gridWidth || length < 0 || length >= gridWidth)
+            return 0;
+
+        if (tileUsed[height][length]) return 0;
+
         tileUsed[height][length] = true;
 
+        if (grid[height][length] == Stone.NONE) {
+            return 1;
+        }
+
+        if (grid[height][length] != stone) {
+            return 0;
+        }
+
         int breaths = 0;
-        int[][] directions = { {-1,0}, {0,1}, {1,0}, {0,-1} }; // up, right, down, left
+        int[][] directions = { {-1,0}, {0,1}, {1,0}, {0,-1} };
 
         for (int[] dir : directions) {
             int newHeight = height + dir[0];
             int newLength = length + dir[1];
 
-            if (newHeight >= 0 && newHeight < gridWidth &&
-                newLength >= 0 && newLength < gridWidth) {
-                    if (grid[newHeight][newLength] != stone) breaths--;
-                    else breaths += numOfBreaths(newHeight, newLength, stone);
-                    if (grid[newHeight][newLength] == Stone.NONE && !tileUsed[newHeight][newLength]) {
-                        tileUsed[newHeight][newLength] = true;
-                        breaths++;
-                    }
-                }
+            breaths += numOfBreaths(newHeight, newLength, stone);
         }
+
         return breaths;
     }
 
-    // return true if Stone [stone] placed on 
+    // return true if Stone [stone] placed on
     // grid[height][length] can capture oposite stones
     // otherwise return false
     private boolean checkForCapture(int height, int length, Stone stone) {
@@ -60,22 +72,20 @@ public class GameBoard extends Board {
         // set temporarily to count breaths of opponent's chains
         // if this move were to happen
         grid[height][length] = stone;
-        if (height - 1 >= 0 && numOfBreaths(height - 1, length, stone.oppositeStone()) == 0) {
-            grid[height][length] = Stone.NONE;
-            return true;
-        } clearTileUsed();
-        if (length + 1 < gridWidth && numOfBreaths(height, length + 1, stone.oppositeStone()) == 0) {
-            grid[height][length] = Stone.NONE;
-            return true;
-        } clearTileUsed();
-        if (height + 1 < gridWidth && numOfBreaths(height + 1, length, stone.oppositeStone()) == 0) {
-            grid[height][length] = Stone.NONE;
-            return true;
-        } clearTileUsed();
-        if (length - 1 >= 0 && numOfBreaths(height, length - 1, stone.oppositeStone()) == 0) {
-            grid[height][length] = Stone.NONE;
-            return true;
-        } clearTileUsed();
+        int[][] directions = { {-1,0}, {0,1}, {1,0}, {0,-1} }; // up, right, down, left
+        for (int[] dir : directions) {
+            int newHeight = height + dir[0];
+            int newLength = length + dir[1];
+            if (newHeight >= 0 && newHeight < gridWidth &&
+                newLength >= 0 && newLength < gridWidth) {
+                    if (numOfBreaths(newHeight, newLength, stone.oppositeStone()) == 0) {
+                        grid[newHeight][newLength] = Stone.NONE;
+                        return true;
+                    }
+            }
+            clearTileUsed();
+        }
+        grid[height][length] = Stone.NONE;
         return false;
     }
 
@@ -84,16 +94,22 @@ public class GameBoard extends Board {
         if (height < 0 || height >= gridWidth)      return false;
         if (length < 0 || length >= gridWidth)      return false;
         if (grid[height][length] != Stone.NONE)     return false;
-        //boolean public checkCapture(width, length);
-        if (numOfBreaths(height, length, stone) == 0 && !checkForCapture(height, length, stone))
+
+        grid[height][length] = stone;
+        if (numOfBreaths(height, length, stone) == 0 && !checkForCapture(height, length, stone)) {
+            clearTileUsed();
+            grid[height][length] = Stone.NONE;
             return false;
+        }
+        grid[height][length] = Stone.NONE;
+        clearTileUsed();
         return true;
     }
 
-    // return if can't place stone because of KO rule
+    // return if can't place stone because of KOI rule
     // false otherwise
     private boolean checkKO(int height, int length, Stone stone) {
-        if (previousGrid == null) return false;
+        if (morePreviousGrid == null) return false;
         Stone[][] holdGrid = grid;
         grid = new Stone[gridWidth][gridWidth];
         for (int i = 0; i < gridWidth; i++)
@@ -103,10 +119,10 @@ public class GameBoard extends Board {
         grid[height][length] = stone;
         // remove captured stones temporarily
         placeStone(height, length, stone, 0);
-        // check if current grid equals previousGrid
+        // check if current grid equals morePreviousGrid
         for (int i = 0; i < gridWidth; i++)
             for (int j = 0; j < gridWidth; j++)
-                if (grid[i][j] != previousGrid[i][j]) {
+                if (grid[i][j] != morePreviousGrid[i][j]) {
                     grid = holdGrid;
                     return false;
                 }
@@ -130,84 +146,30 @@ public class GameBoard extends Board {
                 if (tileUsed[i][j] && grid[i][j] == stone)
                     grid[i][j] = Stone.NONE;
             }
-        // grid[height][length] = Stone.NONE;
-        // tileUsed[height][length] = true;
 
         clearTileUsed();
     }
 
-    // KOIRecursionGuard to prevent infinite recursion
     // returns true on success, false on failure
     public boolean placeStone(int height, int length, Stone stone, int KORecursionGuard) {
-        if (!checkMoveValidity(height, length, stone))                  return false;
-        if (KORecursionGuard < 0 && checkKO(height, length, stone))     return false;
+        if (KORecursionGuard > 0 &&!checkMoveValidity(height, length, stone))   return false;
+        if (KORecursionGuard > 0 && checkKO(height, length, stone))             return false;
         grid[height][length] = stone;
-        // tileUsed[height][length] = true;
 
         if (height - 1 >= 0)            removeIfInvalid(height - 1, length, stone.oppositeStone());
         if (length + 1 < gridWidth)     removeIfInvalid(height, length + 1, stone.oppositeStone());
         if (height + 1 < gridWidth)     removeIfInvalid(height + 1, length, stone.oppositeStone());
         if (length - 1 >= 0)            removeIfInvalid(height, length - 1, stone.oppositeStone());
 
+        if (KORecursionGuard > 0) updatePreviousGrids();
         return true;
     }
 
     // returns int[2], where first value is points of
     // black stones player, and second of white stones
     public int[] calculatePoints() {
-        int blackPoints = 0;
-        int whitePoints = 0;
-        boolean[][] visited = new boolean[gridWidth][gridWidth];
-        for (int i = 0; i < gridWidth; i++)
-            for (int j = 0; j < gridWidth; j++)
-                visited[i][j] = false;
-
-        for (int i = 0; i < gridWidth; i++)
-            for (int j = 0; j < gridWidth; j++) {
-                if (visited[i][j]) continue;
-                visited[i][j] = true;
-                if (grid[i][j] == Stone.BLACK) {
-                    blackPoints++;
-                } else if (grid[i][j] == Stone.WHITE) {
-                    whitePoints++;
-                } else {
-                    // empty tile, check surrounding stones
-                    boolean touchesBlack = false;
-                    boolean touchesWhite = false;
-                    int territorySize = 1;
-                    java.util.Stack<int[]> stack = new java.util.Stack<>();
-                    stack.push(new int[] {i, j});
-                    while (!stack.isEmpty()) {
-                        int[] pos = stack.pop();
-                        int height = pos[0];
-                        int length = pos[1];
-                        int[][] directions = { {-1,0}, {0,1}, {1,0}, {0,-1} }; // up, right, down, left
-                        for (int[] dir : directions) {
-                            int newHeight = height + dir[0];
-                            int newLength = length + dir[1];
-                            if (newHeight >= 0 && newHeight < gridWidth &&
-                                newLength >= 0 && newLength < gridWidth &&
-                                !visited[newHeight][newLength]) {
-                                    visited[newHeight][newLength] = true;
-                                    if (grid[newHeight][newLength] == Stone.BLACK) {
-                                        touchesBlack = true;
-                                    } else if (grid[newHeight][newLength] == Stone.WHITE) {
-                                        touchesWhite = true;
-                                    } else {
-                                        territorySize++;
-                                        stack.push(new int[] {newHeight, newLength});
-                                    }
-                                }
-                        }
-                    }
-                    if (touchesBlack && !touchesWhite) {
-                        blackPoints += territorySize;
-                    } else if (touchesWhite && !touchesBlack) {
-                        whitePoints += territorySize;
-                    }
-                }
-            }
-        return new int[] {blackPoints, whitePoints};
+        // TODO: make this
+        return new int[] {-1, -1};
     }
 
 }

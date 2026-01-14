@@ -67,7 +67,7 @@ public class GUI extends Application {
         StackPane cell = new StackPane();
         cell.setPrefSize(30, 30);
         Rectangle rect = new Rectangle(30, 30);
-        rect.setFill(Color.TRANSPARENT);
+        rect.setFill(Color.BEIGE);
         rect.setStroke(Color.BLACK);
         cell.getChildren().add(rect);
 
@@ -91,7 +91,7 @@ public class GUI extends Application {
     private void updateCell(int r, int c, Stone stone) {
         StackPane cell = cells[r][c];
         cell.getChildren().removeIf(n -> n instanceof Circle); // Czyścimy
-        if (stone != null) {
+        if (stone != Stone.NONE) {
             Circle circle = new Circle(13);
             circle.setFill(stone == Stone.BLACK ? Color.BLACK : Color.WHITE);
             circle.setStroke(Color.GREY);

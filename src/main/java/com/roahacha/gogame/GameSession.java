@@ -4,9 +4,7 @@ import com.roahacha.gogame.Common.*;
 
 import java.io.IOException;
 import java.net.Socket;
-import com.roahacha.gogame.Common.MoveCommand;
-import com.roahacha.gogame.Common.GameAction;
-import com.roahacha.gogame.Common.Stone;
+import com.roahacha.gogame.Common.*;
 
 
 // Connects Users via Server
@@ -40,7 +38,7 @@ public class GameSession implements Runnable {
                 PlayerController currentPlayer =    isBlackTurn ? firstPlayer : secondPlayer;
                 PlayerController opponentPlayer =   isBlackTurn ? secondPlayer : firstPlayer;
 
-                GameAction action = currentPlayer.waitForDecision();
+                GameAction action = currentPlayer.reciveAction();
 
                 switch (action) {
                     case PLAYER_MOVE:
