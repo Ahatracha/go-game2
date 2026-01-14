@@ -23,6 +23,10 @@ public class Board {
         return grid[height][length];
     }
 
+    public int getSize() {
+        return gridWidth;
+    }
+
     // updates grid[][] after any player moves
     // recives new grid from GameBoard
     public void updateGrid(Stone arr[][]) {

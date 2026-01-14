@@ -15,7 +15,7 @@ public class MoveCommand implements Command {
 
     @Override
     public void execute() {
-        success = board.placeStone(row, col, stone);
+        success = board.placeStone(row, col, stone, 1);
     }
 
     public boolean isSuccessful() {

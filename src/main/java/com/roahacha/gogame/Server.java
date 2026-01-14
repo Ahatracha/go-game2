@@ -1,58 +1,48 @@
 package com.roahacha.gogame;
 
-import javax.swing.*;
-import java.awt.*;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Date;
 
-public class Server extends JFrame {
-    final int port = 12543;
+public class Server {
+    private static final int port = 12543;
+    private static Server instance;
 
-    public static final int PLAYER1 = 1;
-    public static final int PLAYER2 = 2;
+    private Server() {}
 
-    public static void main(String[] args) {
-        Server display = new Server();
+    public static Server getInstance() {
+        if (instance == null) {
+            instance = new Server();
+        }
+        return instance;
     }
 
+    public static void main(String[] args) {
+        Server.getInstance().start();
+    }
 
-    public Server() {
-        JTextArea textArea = new JTextArea();
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        add(scrollPane, BorderLayout.CENTER);
-        setSize(550, 300);
-        setTitle("Gogame server");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setVisible(true);
+    public void start() {
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            System.out.println("Server started at socket " + port);
 
-        try {
-            ServerSocket serverSocket = new ServerSocket(port);
-            textArea.append(new Date() + ":     Server started at socket"+port+"\n");
-            int sessionNum = 1;
             while (true) {
-                textArea.append(new Date() + ":     Waiting for players to join session " + sessionNum + "\n");
+                System.out.println("Waiting for players to join...");
 
                 //connection to player1
                 Socket firstPlayer = serverSocket.accept();
-                textArea.append(new Date() + ":     Player 1 joined session " + sessionNum + ". Player 1's IP address " + firstPlayer.getInetAddress().getHostAddress() + "\n");
+                System.out.println("Player 1 joined. Player 1's IP address: " + firstPlayer.getInetAddress().getHostAddress());
 
                 //connection to player2
                 Socket secondPlayer = serverSocket.accept();
-                textArea.append(new Date() + ":     Player 2 joined session " + sessionNum + ". Player 2's IP address " + secondPlayer.getInetAddress().getHostAddress() + "\n");
+                System.out.println("Player 2 joined. Player 2's IP address: " + secondPlayer.getInetAddress().getHostAddress());
 
-
-                //starting the thread for two players
-                textArea.append(new Date() + ":     Starting a thread for session " + sessionNum++ + "...\n");
                 GameSession task = new GameSession(firstPlayer, secondPlayer);
                 Thread t1 = new Thread(task);
                 t1.start();
             }
         } catch (IOException ex) {
             System.err.println(ex);
+            ex.printStackTrace();
         }
-
     }
 }
