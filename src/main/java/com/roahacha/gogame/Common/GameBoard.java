@@ -6,7 +6,7 @@ public class GameBoard extends Board {
     // tells, if tile at [i][j] was interacted with
     boolean[][] tileUsed = new boolean[gridWidth][gridWidth];
 
-    // previous state of the board for KOI rule
+    // previous state of the board for KO rule
     private Stone[][] previousGrid = null;
     private Stone[][] morePreviousGrid = null;
 
@@ -195,8 +195,62 @@ public class GameBoard extends Board {
     // returns int[2], where first value is points of
     // black stones player, and second of white stones
     public int[] calculatePoints() {
-        // TODO: make this
-        return new int[] {-1, -1};
+        int blackPoints = 0;
+        int whitePoints = 0;
+        boolean[][] visited = new boolean[gridWidth][gridWidth];
+        for (int i = 0; i < gridWidth; i++)
+            for (int j = 0; j < gridWidth; j++)
+                visited[i][j] = false;
+
+        for (int i = 0; i < gridWidth; i++)
+            for (int j = 0; j < gridWidth; j++) {
+                if (visited[i][j]) continue;
+                if (grid[i][j] == Stone.BLACK) {
+                    blackPoints++;
+                } else if (grid[i][j] == Stone.WHITE) {
+                    whitePoints++;
+                } else {
+                    // empty tile, check surrounding stones
+                    boolean touchesBlack = false;
+                    boolean touchesWhite = false;
+                    int territorySize = 0;
+
+                    java.util.Stack<int[]> stack = new java.util.Stack<>();
+                    stack.push(new int[] {i, j});
+                    visited[i][j] = true;
+                    territorySize++;
+
+                    while (!stack.isEmpty()) {
+                        int[] pos = stack.pop();
+                        int height = pos[0];
+                        int length = pos[1];
+                        int[][] directions = { {-1,0}, {0,1}, {1,0}, {0,-1} }; // up, right, down, left
+
+                        for (int[] dir : directions) {
+                            int newHeight = height + dir[0];
+                            int newLength = length + dir[1];
+                            if (newHeight >= 0 && newHeight < gridWidth &&
+                                newLength >= 0 && newLength < gridWidth) {
+                                    if (grid[newHeight][newLength] == Stone.BLACK) {
+                                        touchesBlack = true;
+                                    } else if (grid[newHeight][newLength] == Stone.WHITE) {
+                                        touchesWhite = true;
+                                    } else  if (!visited[newHeight][newLength]) {
+                                        visited[newHeight][newLength] = true;
+                                        territorySize++;
+                                        stack.push(new int[] {newHeight, newLength});
+                                    }
+                                }
+                        }
+                    }
+                    if (touchesBlack && !touchesWhite) {
+                        blackPoints += territorySize;
+                    } else if (touchesWhite && !touchesBlack) {
+                        whitePoints += territorySize;
+                    }
+                }
+            }
+        return new int[] {blackPoints, whitePoints};
     }
 
 }
