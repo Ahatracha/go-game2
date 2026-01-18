@@ -79,7 +79,7 @@ public class GameBoard extends Board {
             if (newHeight >= 0 && newHeight < gridWidth &&
                 newLength >= 0 && newLength < gridWidth) {
                     if (numOfBreaths(newHeight, newLength, stone.oppositeStone()) == 0) {
-                        grid[newHeight][newLength] = Stone.NONE;
+                        grid[height][length] = Stone.NONE;
                         return true;
                     }
             }
@@ -106,28 +106,55 @@ public class GameBoard extends Board {
         return true;
     }
 
-    // return if can't place stone because of KOI rule
-    // false otherwise
+    // Returns true if the move violates the KO rule (invalid move), false otherwise
     private boolean checkKO(int height, int length, Stone stone) {
-        if (morePreviousGrid == null) return false;
-        Stone[][] holdGrid = grid;
-        grid = new Stone[gridWidth][gridWidth];
-        for (int i = 0; i < gridWidth; i++)
-            for (int j = 0; j < gridWidth; j++)
-                grid[i][j] = holdGrid[i][j];
-        // place stone temporarily
-        grid[height][length] = stone;
-        // remove captured stones temporarily
-        placeStone(height, length, stone, 0);
-        // check if current grid equals morePreviousGrid
-        for (int i = 0; i < gridWidth; i++)
-            for (int j = 0; j < gridWidth; j++)
-                if (grid[i][j] != morePreviousGrid[i][j]) {
-                    grid = holdGrid;
-                    return false;
+        // [DIAGNOSTYKA] Sprawdzamy czy mamy historię
+        if (morePreviousGrid == null) {
+            System.out.println("KO CHECK: Brak historii (morePreviousGrid is null). Ruch dozwolony.");
+            return false;
+        }
+
+        // 1. Create a DEEP COPY of the current grid to simulate the move
+        Stone[][] simulationGrid = new Stone[gridWidth][gridWidth];
+        for (int i = 0; i < gridWidth; i++) {
+            for (int j = 0; j < gridWidth; j++) {
+                simulationGrid[i][j] = this.grid[i][j];
+            }
+        }
+
+        Stone[][] realGrid = this.grid; // Backup real grid
+
+        // Swap in simulation grid to use existing logic safely
+        this.grid = simulationGrid;
+
+        try {
+            // Simulate placing the stone
+            this.grid[height][length] = stone;
+
+            // Simulate capturing opponents
+            if (height - 1 >= 0)            removeIfInvalid(height - 1, length, stone.oppositeStone());
+            if (length + 1 < gridWidth)     removeIfInvalid(height, length + 1, stone.oppositeStone());
+            if (height + 1 < gridWidth)     removeIfInvalid(height + 1, length, stone.oppositeStone());
+            if (length - 1 >= 0)            removeIfInvalid(height, length - 1, stone.oppositeStone());
+
+            // 4. Compare the simulation result with the state from 2 moves ago
+            for (int i = 0; i < gridWidth; i++) {
+                for (int j = 0; j < gridWidth; j++) {
+                    if (this.grid[i][j] != morePreviousGrid[i][j]) {
+                        // [DIAGNOSTYKA] Jeśli znajdzie różnicę, wypisze to w konsoli serwera
+
+                        return false; // The layout is different -> No KO -> Move allowed
+                    }
                 }
-        grid = holdGrid;
-        return true;
+            }
+
+            System.out.println("KO CHECK: Wykryto powtórzenie planszy! (KO VIOLATION)");
+            return true; // The layout is identical -> KO -> Move forbidden!
+
+        } finally {
+            // 5. VERY IMPORTANT: Restore the real board
+            this.grid = realGrid;
+        }
     }
 
     // remove captured pieces if they have no breaths

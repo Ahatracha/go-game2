@@ -56,8 +56,7 @@ public class ServerProxy implements AutoCloseable {
     private void listenLoop() {
         try {
             GameAction startAction = reciveAction();
-            System.out.println(startAction);
-            //GameAction startAction = reciveAction();
+            System.out.println("Start Action: " + startAction);
 
             Stone myStone;
             switch (startAction) {
@@ -75,27 +74,45 @@ public class ServerProxy implements AutoCloseable {
 
             while(true) {
                 GameAction action = reciveAction();
+
+                // Opcjonalnie: odkomentuj linię niżej, żeby widzieć w konsoli co przychodzi
+                // System.out.println("Otrzymano akcję: " + action);
+
                 switch (action) {
                     case GAME_END_DRAW:
                     case GAME_END_WIN:
                     case GAME_END_LOSS:
                         Platform.runLater(() -> observer.onGameAction(action));
                         return;
+
                     case GAME_SEND_GRID:
                         Stone[][] grid = reciveBoardState(gridSize);
                         Platform.runLater(() -> observer.onBoardUpdate(grid));
                         break;
+
                     case GAME_YOUR_TURN:
-                        // TODO: join with javafx to get move input
                         Platform.runLater(() -> observer.onGameAction(action));
                         break;
+
+                    // [TO JEST KLUCZOWA POPRAWKA]
+                    // Musisz przekazać informację o błędzie do Obserwatora (Clienta)
+                    case GAME_INCORRENT_MOVE: // Upewnij się, że pisownia zgadza się z Enumem GameAction!
+                        Platform.runLater(() -> observer.onGameAction(action));
+                        break;
+
+                    case PLAYER_QUIT: // Warto też dodać obsługę wyjścia przeciwnika
+                        Platform.runLater(() -> observer.onGameAction(action));
+                        return;
+
                     case GAME_STONE_BLACK:
                     case GAME_STONE_WHITE:
                     default:
+                        // Ignorujemy inne, nieoczekiwane komunikaty
                         break;
                 }
             }
         } catch (Exception e) {
+            // W razie zerwania połączenia powiadamiamy klienta
             Platform.runLater(() -> observer.onGameAction(GameAction.PLAYER_QUIT));
         }
     }

@@ -46,6 +46,28 @@ public class Client implements GameClientObserver {
         }
     }
 
+    public void sendPass() {
+
+        if (server != null && myTurn) {
+            System.out.println("Wysyłam PAS");
+            server.sendAction(GameAction.PLAYER_PASS);
+
+            myTurn = false;
+            gui.updateStatus("Spasowałeś. Czekaj na ruch przeciwnika...");
+        } else {
+
+            gui.updateStatus("Nie możesz teraz spasować (nie twoja tura).");
+        }
+    }
+
+    public void sendSurrender() {
+        if (server != null) {
+            System.out.println("Wysyłam PODDANIE");
+            server.sendAction(GameAction.PLAYER_SURRENDER);
+
+        }
+    }
+
     public void close() {
         try {
             if (server != null) server.close();
@@ -74,6 +96,11 @@ public class Client implements GameClientObserver {
     public void onBoardUpdate(Stone[][] grid) {
         // Upadeting board
         gui.refreshBoard(grid);
+        Platform.runLater(() -> {
+            if (!myTurn) {
+                gui.updateStatus("Ruch przeciwnika...");
+            }
+        });
     }
 
     @Override
@@ -83,7 +110,7 @@ public class Client implements GameClientObserver {
             switch (action) {
                 case GAME_YOUR_TURN:
                     myTurn = true;
-                    gui.updateStatus("TWOJA TURA! Wykonaj ruch.");
+                    gui.updateStatus("TWOJA TURA! Wykonaj ruch lub spasuj.");
                     break;
 
                 case GAME_INCORRENT_MOVE:

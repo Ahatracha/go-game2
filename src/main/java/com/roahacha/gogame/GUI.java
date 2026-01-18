@@ -4,6 +4,9 @@ import com.roahacha.gogame.Common.Stone;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.layout.HBox;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
@@ -35,10 +38,16 @@ public class GUI extends Application {
 
 
         BorderPane root = new BorderPane();
-        VBox top = new VBox(infoLabel, statusLabel);
+
+        VBox top = new VBox(10, infoLabel, statusLabel);
+        top.setAlignment(Pos.CENTER);
+        top.setStyle("-fx-padding: 10; -fx-background-color: #f4f4f4;");
         root.setTop(top);
 
         GridPane grid = new GridPane();
+        grid.setAlignment(Pos.CENTER);
+        grid.setStyle("-fx-background-color: #DEB887; -fx-padding: 10;");
+
         for (int r = 0; r < SIZE; r++) {
             for (int c = 0; c < SIZE; c++) {
                 cells[r][c] = createCell(r, c);
@@ -47,10 +56,24 @@ public class GUI extends Application {
         }
         root.setCenter(grid);
 
-        primaryStage.setScene(new Scene(root, 600, 650));
-        primaryStage.setTitle("Go Game");
+        Button passButton = new Button("PAS");
+        passButton.setPrefWidth(100);
+        passButton.setStyle("-fx-background-color: #87CEEB; -fx-cursor: hand;");
 
+        Button surrenderButton = new Button("PODDAJ SIĘ");
+        surrenderButton.setPrefWidth(100);
+        surrenderButton.setStyle("-fx-background-color: #FF6347; -fx-text-fill: white; -fx-cursor: hand;");
 
+        passButton.setOnAction(e -> client.sendPass());
+        surrenderButton.setOnAction(e -> client.sendSurrender());
+
+        HBox bottomPanel = new HBox(20, passButton, surrenderButton);
+        bottomPanel.setAlignment(Pos.CENTER);
+        bottomPanel.setStyle("-fx-padding: 15; -fx-background-color: #f4f4f4; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;");
+
+        root.setBottom(bottomPanel);
+
+        primaryStage.setScene(new Scene(root, 650, 750));primaryStage.setTitle("Go Game");
         primaryStage.setOnCloseRequest(e -> {
             client.close();
             Platform.exit();
@@ -67,7 +90,7 @@ public class GUI extends Application {
         StackPane cell = new StackPane();
         cell.setPrefSize(30, 30);
         Rectangle rect = new Rectangle(30, 30);
-        rect.setFill(Color.BEIGE);
+        rect.setFill(Color.TRANSPARENT);
         rect.setStroke(Color.BLACK);
         cell.getChildren().add(rect);
 
@@ -90,13 +113,24 @@ public class GUI extends Application {
 
     private void updateCell(int r, int c, Stone stone) {
         StackPane cell = cells[r][c];
-        cell.getChildren().removeIf(n -> n instanceof Circle); // Czyścimy
-        if (stone != Stone.NONE) {
+
+
+        cell.getChildren().removeIf(n -> n instanceof Circle);
+
+
+        if (stone == Stone.BLACK) {
             Circle circle = new Circle(13);
-            circle.setFill(stone == Stone.BLACK ? Color.BLACK : Color.WHITE);
+            circle.setFill(Color.BLACK);
             circle.setStroke(Color.GREY);
             cell.getChildren().add(circle);
         }
+        else if (stone == Stone.WHITE) {
+            Circle circle = new Circle(13);
+            circle.setFill(Color.WHITE);
+            circle.setStroke(Color.BLACK);
+            cell.getChildren().add(circle);
+        }
+
     }
 
     public void updateInfo(String text) {
@@ -110,6 +144,8 @@ public class GUI extends Application {
     public void showEndMessage(String msg) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Koniec Gry");
+            alert.setHeaderText(null);
             alert.setContentText(msg);
             alert.show();
         });
