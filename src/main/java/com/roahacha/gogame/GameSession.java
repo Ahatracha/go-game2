@@ -7,19 +7,50 @@ import java.net.Socket;
 import com.roahacha.gogame.Common.*;
 
 
-// Connects Users via Server
+/**
+ * Zarządza pojedynczą sesją gry w Go między dwoma graczami.
+ * <p>
+ * Klasa ta działa w osobnym wątku (implementuje {@link Runnable}) i odpowiada za:
+ * <ul>
+ * <li>Utrzymywanie połączenia z dwoma graczami (Czarnym i Białym).</li>
+ * <li>Synchronizację tur i przesyłanie ruchów.</li>
+ * <li>Obsługę logiki gry (ruch, pasowanie, poddanie się).</li>
+ * <li>Zliczanie punktów i wyłanianie zwycięzcy po zakończeniu gry.</li>
+ * </ul>
+ */
 public class GameSession implements Runnable {
 
     private final PlayerController    firstPlayer;
     private final PlayerController    secondPlayer;
     private GameBoard gameBoard;
 
+    /**
+     * Inicjalizuje nową sesję gry.
+     * <p>
+     * Tworzy kontrolery dla obu graczy, przypisując pierwszemu socketowi kolor Czarny,
+     * a drugiemu Biały. Inicjalizuje również pustą planszę gry.
+     *
+     * @param firstPlayer  Gniazdo połączenia dla pierwszego gracza (Czarne kamienie).
+     * @param secondPlayer Gniazdo połączenia dla drugiego gracza (Białe kamienie).
+     * @throws IOException Jeśli wystąpi błąd podczas tworzenia kontrolerów graczy.
+     */
     public GameSession(Socket firstPlayer, Socket secondPlayer) throws IOException {
         this.firstPlayer = new PlayerController(firstPlayer, Stone.BLACK);
         this.secondPlayer = new PlayerController(secondPlayer, Stone.WHITE);
         this.gameBoard = new GameBoard();
     }
 
+    /**
+     * Główna pętla gry uruchamiana w nowym wątku.
+     * <p>
+     * Metoda ta:
+     * <ol>
+     * <li>Rozpoczyna grę, informując pierwszego gracza o jego turze.</li>
+     * <li>W pętli oczekuje na akcję aktualnego gracza (Ruch, Pas, Poddanie).</li>
+     * <li>Przełącza tury po poprawnym ruchu lub spasowaniu.</li>
+     * <li>Kończy grę, gdy obaj gracze spasują (liczenie punktów) lub ktoś się podda/rozłączy.</li>
+     * </ol>
+     */
     @Override
     public void run() {
         try (firstPlayer; secondPlayer) {
@@ -83,8 +114,17 @@ public class GameSession implements Runnable {
         }
     }
 
-    // returns true on success
-    // false otherwise
+    /**
+     * Obsługuje logikę wykonania ruchu przez gracza.
+     * <p>
+     * Pobiera współrzędne ruchu, próbuje wykonać go na planszy (weryfikując poprawność zasad,
+     * takich jak brak oddechów czy KO). Jeśli ruch jest poprawny, aktualizuje stan planszy
+     * u obu graczy. W przeciwnym razie wysyła informację o błędzie.
+     *
+     * @param current  Kontroler gracza wykonującego ruch.
+     * @param opponent Kontroler przeciwnika (do aktualizacji widoku).
+     * @return {@code true} jeśli ruch był poprawny i został wykonany; {@code false} w przeciwnym razie.
+     */
     private boolean handleMove(PlayerController current, PlayerController opponent) {
         int[] cords = current.reciveMove();
         int row = cords[0];

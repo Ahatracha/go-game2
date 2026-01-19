@@ -9,3 +9,6 @@ mvn exec:java@server-cli
 
 Client:
 mvn exec:java@client-cli
+
+JavaDoc:
+mvn javadoc:javadoc

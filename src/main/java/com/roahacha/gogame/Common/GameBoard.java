@@ -1,19 +1,29 @@
 package com.roahacha.gogame.Common;
 
-// Made for server
-// Handle game rules and applies them on board
+/**
+ * Klasa GameBoard zarządza logiką gry Go po stronie serwera. 
+ * Odpowiada za weryfikację zasad, wykonywanie ruchów oraz obliczanie punktacji.
+ */
 public class GameBoard extends Board {
-    // tells, if tile at [i][j] was interacted with
+    /** Tablica pomocnicza śledząca pola odwiedzone podczas algorytmów rekurencyjnych. */
     boolean[][] tileUsed = new boolean[gridWidth][gridWidth];
 
-    // previous state of the board for KO rule
+    /** Kopie stanu planszy wykorzystywane do weryfikacji reguły KO. */
     private Stone[][] previousGrid = null;
     private Stone[][] morePreviousGrid = null;
 
+    /**
+     * Prosty konstruktor klasy GameBoard.
+     * Inicjalizuje planszę oraz czyści tablicę pomocniczą.
+     */
     public GameBoard() {
         clearTileUsed();
     }
 
+    /**
+     * Zwraca głęboką kopię aktualnego stanu planszy.
+     * @return Dwuwymiarowa tablica reprezentująca grid.
+     */
     public Stone[][] getGrid() {
         Stone[][] arr = new Stone[gridWidth][gridWidth];
         for (int i = 0; i < gridWidth * gridWidth; i++)
@@ -21,19 +31,31 @@ public class GameBoard extends Board {
         return arr;
     }
 
+    /**
+     * Czyści tablicę tileUsed, ustawiając wszystkie wartości na false.
+     */
     private void clearTileUsed() {
         for (int i = 0; i < gridWidth; i++)
             for (int j = 0; j < gridWidth; j++)
                 tileUsed[i][j] = false;
     }
 
+    /**
+     * Przesuwa historię stanów planszy o jeden krok wstecz w celu obsługi zasady KO.
+     */
     private void updatePreviousGrids() {
         morePreviousGrid = previousGrid;
         previousGrid = getGrid();
     }
 
-    // calculates number of breaths for chain including stone at grid[height][length]
-    // after invoking first recursion of funtion, set whole tileUsed[][] to false
+    /**
+     * Oblicza liczbę "oddechów" (wolnych skrzyżowań) dla grupy kamieni połączonych z punktem (height, length).
+     * Wykorzystuje algorytm Flood Fill do przeszukania całej grupy.
+     * @param height Wiersz na planszy.
+     * @param length Kolumna na planszy.
+     * @param stone Kolor sprawdzanej grupy kamieni.
+     * @return Całkowita liczba oddechów dla grupy.
+     */
     public int numOfBreaths(int height, int length, Stone stone) {
 
         if (height < 0 || height >= gridWidth || length < 0 || length >= gridWidth)
@@ -64,9 +86,10 @@ public class GameBoard extends Board {
         return breaths;
     }
 
-    // return true if Stone [stone] placed on
-    // grid[height][length] can capture oposite stones
-    // otherwise return false
+    /**
+     * Sprawdza, czy postawienie kamienia na danym polu spowoduje zbicie kamieni przeciwnika.
+     * @return true, jeśli ruch skutkuje przechwyceniem kamieni oponenta.
+     */
     private boolean checkForCapture(int height, int length, Stone stone) {
         clearTileUsed();
         // set temporarily to count breaths of opponent's chains
@@ -89,7 +112,11 @@ public class GameBoard extends Board {
         return false;
     }
 
-    // sprawdza, czy gracz może postawić kamień na pozycji grid[width,length]
+    /**
+     * Weryfikuje, czy dany ruch jest poprawny pod kątem granic planszy, 
+     * dostępności pola oraz zasady samobójstwa.
+     * @return true, jeśli ruch spełnia podstawowe wymogi logiczne.
+     */
     private boolean checkMoveValidity(int height, int length, Stone stone) {
         if (height < 0 || height >= gridWidth)      return false;
         if (length < 0 || length >= gridWidth)      return false;
@@ -106,7 +133,11 @@ public class GameBoard extends Board {
         return true;
     }
 
-    // Returns true if the move violates the KO rule (invalid move), false otherwise
+    /**
+     * Sprawdza, czy ruch narusza regułę KO (zakaz natychmiastowego powtórzenia stanu planszy sprzed 2 ruchów).
+     * Wykonuje głęboką kopię planszy w celu symulacji skutków ruchu przed jego zatwierdzeniem.
+     * @return true, jeśli ruch narusza zasadę KO.
+     */
     private boolean checkKO(int height, int length, Stone stone) {
         // [DIAGNOSTYKA] Sprawdzamy czy mamy historię
         if (morePreviousGrid == null) {
@@ -157,7 +188,9 @@ public class GameBoard extends Board {
         }
     }
 
-    // remove captured pieces if they have no breaths
+    /**
+     * Usuwa z planszy łańcuchy kamieni o zerowej liczbie oddechów.
+     */
     private void removeIfInvalid(int height, int length, Stone stone) {
         if (grid[height][length] != stone) return;
 
@@ -177,7 +210,12 @@ public class GameBoard extends Board {
         clearTileUsed();
     }
 
-    // returns true on success, false on failure
+    /**
+     * Główna metoda realizująca postawienie kamienia na planszy.
+     * Przeprowadza pełną walidację (zasady podstawowe, KO) i aktualizuje historię planszy.
+     * @param KORecursionGuard Flaga (zazwyczaj > 0) aktywująca sprawdzanie poprawności i aktualizację historii.
+     * @return true, jeśli kamień został pomyślnie umieszczony.
+     */
     public boolean placeStone(int height, int length, Stone stone, int KORecursionGuard) {
         if (KORecursionGuard > 0 &&!checkMoveValidity(height, length, stone))   return false;
         if (KORecursionGuard > 0 && checkKO(height, length, stone))             return false;
@@ -192,8 +230,11 @@ public class GameBoard extends Board {
         return true;
     }
 
-    // returns int[2], where first value is points of
-    // black stones player, and second of white stones
+    /**
+     * Oblicza punkty dla obu graczy na podstawie terytorium i obecności kamieni.
+     * Wykorzystuje stos do identyfikacji zamkniętych obszarów pustych pól.
+     * @return Tablica dwuelementowa: [punkty czarnych, punkty białych].
+     */
     public int[] calculatePoints() {
         int blackPoints = 0;
         int whitePoints = 0;

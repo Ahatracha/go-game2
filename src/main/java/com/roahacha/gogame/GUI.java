@@ -18,6 +18,12 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
+/**
+ * Główna klasa graficznego interfejsu użytkownika (GUI) dla aplikacji gry Go.
+ * <p>
+ * Odpowiada za renderowanie planszy, obsługę zdarzeń myszy oraz wyświetlanie 
+ * komunikatów systemowych i statusu gry.
+ */
 public class GUI extends Application {
 
     private final int SIZE = 19;
@@ -27,10 +33,18 @@ public class GUI extends Application {
     private Label infoLabel = new Label("Łączenie...");
     private Label statusLabel = new Label("");
 
+    /**
+     * Punkt wejścia aplikacji JavaFX.
+     * @param args Argumenty linii poleceń.
+     */
     public static void main(String[] args) {
         launch(args);
     }
 
+    /**
+     * Inicjalizuje główne okno aplikacji, buduje układ graficzny i uruchamia połączenie z serwerem.
+     * @param primaryStage Główna scena (okno) aplikacji.
+     */
     @Override
     public void start(Stage primaryStage) {
 
@@ -86,6 +100,12 @@ public class GUI extends Application {
         new Thread(() -> client.connectToServer()).start();
     }
 
+    /**
+     * Tworzy pojedyncze pole (komórkę) na planszy.
+     * @param r Indeks wiersza.
+     * @param c Indeks kolumny.
+     * @return Kontener typu StackPane reprezentujący pole na planszy.
+     */
     private StackPane createCell(int r, int c) {
         StackPane cell = new StackPane();
         cell.setPrefSize(30, 30);
@@ -99,8 +119,12 @@ public class GUI extends Application {
         return cell;
     }
 
-    //metoths for Client
+    // Methods for Client
 
+    /**
+     * Odświeża widok całej planszy na podstawie dostarczonej macierzy kamieni.
+     * @param grid Macierz stanów pól planszy.
+     */
     public void refreshBoard(Stone[][] grid) {
         Platform.runLater(() -> {
             for (int r = 0; r < SIZE; r++) {
@@ -111,6 +135,12 @@ public class GUI extends Application {
         });
     }
 
+    /**
+     * Aktualizuje zawartość konkretnej komórki na planszy (dodaje lub usuwa kamień).
+     * @param r Indeks wiersza.
+     * @param c Indeks kolumny.
+     * @param stone Typ kamienia do wyświetlenia.
+     */
     private void updateCell(int r, int c, Stone stone) {
         StackPane cell = cells[r][c];
 
@@ -133,14 +163,26 @@ public class GUI extends Application {
 
     }
 
+    /**
+     * Aktualizuje górną etykietę informacyjną (np. o przydzielonym kolorze).
+     * @param text Tekst do wyświetlenia.
+     */
     public void updateInfo(String text) {
         Platform.runLater(() -> infoLabel.setText(text));
     }
 
+    /**
+     * Aktualizuje etykietę statusu gry (np. informacja o turze).
+     * @param text Tekst do wyświetlenia.
+     */
     public void updateStatus(String text) {
         Platform.runLater(() -> statusLabel.setText(text));
     }
 
+    /**
+     * Wyświetla okno dialogowe z komunikatem o zakończeniu gry.
+     * @param msg Treść komunikatu.
+     */
     public void showEndMessage(String msg) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);

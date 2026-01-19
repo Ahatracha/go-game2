@@ -9,33 +9,50 @@ import com.roahacha.gogame.Common.Stone;
 
 import javafx.application.Platform;
 
-
+/**
+ * Klasa ServerProxy odpowiada za komunikację klienta z serwerem gry.
+ * Zarządza strumieniami danych i nasłuchuje komunikatów serwera w osobnym wątku.
+ */
 public class ServerProxy implements AutoCloseable {
+    /** Stały rozmiar planszy odbierany z serwera. */
     private static final int gridSize = 19;
     private final SocketFacade connection;
     private final GameClientObserver observer;
 
+    /**
+     * Inicjalizuje proxy, ustawia połączenie i uruchamia pętlę nasłuchującą w nowym wątku.
+     * @param connection Obiekt SocketFacade zarządzający gniazdem.
+     * @param observer Obiekt implementujący GameClientObserver, reagujący na zmiany stanu gry.
+     */
     public ServerProxy(SocketFacade connection, GameClientObserver observer) {
         this.connection = connection;
         this.observer = observer;
         new Thread(this::listenLoop).start();
     }
 
+    /** Wysyła akcję typu GameAction do serwera. */
     public void sendAction(GameAction action) {
         connection.sendInt(action.getIndex());
     }
 
+    /** Odbiera akcję typu GameAction od klienta. */
     public GameAction reciveAction() {
         int actionIndex = connection.readInt();
         return GameAction.fromIndex(actionIndex);
     }
 
+    /** Wysyła żądanie wykonania ruchu na określonych współrzędnych. */
     public void sendMove(int row, int col) {
         sendAction(GameAction.PLAYER_MOVE);
         connection.sendInt(row);
         connection.sendInt(col);
     }
 
+    /**
+     * Odbiera od serwera stan całej planszy.
+     * @param size Rozmiar planszy do zainicjalizowania.
+     * @return Dwuwymiarowa tablica kamieni Stone[][].
+     */
     public Stone[][] reciveBoardState(int size) {
         Stone[][] grid = new Stone[size][size];
         for (int row = 0; row < size; row++) {
@@ -53,6 +70,10 @@ public class ServerProxy implements AutoCloseable {
         return grid;
     }
 
+    /**
+     * Prywatna pętla nasłuchująca działająca w tle. 
+     * Przetwarza nadchodzące komunikaty i aktualizuje interfejs użytkownika przez obserwatora.
+     */
     private void listenLoop() {
         try {
             GameAction startAction = reciveAction();

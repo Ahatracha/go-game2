@@ -7,6 +7,13 @@ import java.net.Socket;
 
 import javafx.application.Platform;
 
+/**
+ * Zarządzanie klientem gry Go.
+ * <p>
+ * Działa jako kontroler łączący interfejs graficzny ({@link GUI})
+ * i warstwę sieciową ({@link ServerProxy}). Obsługuje walidację danych wejściowych (na podstawie tur),
+ * wysyła komendy do serwera i aktualizuje widok na podstawie odpowiedzi serwera.
+ */
 public class Client implements GameClientObserver {
     final int port = 12543;
     final String host = "localhost";
@@ -16,12 +23,20 @@ public class Client implements GameClientObserver {
     private Stone myStone;
     private boolean myTurn = false;
 
-    // Konstruktor łączy logikę z widokiem
+    /**
+     * Tworzy nową instancję klienta.
+     *
+     * @param gui Główne GUI użytkownika.
+     */
     public Client(GUI gui) {
         this.gui = gui;
     }
 
-    //method which starts connection
+    /**
+     * Tworzy połączenie z serwerem gry.
+     * <p>
+     * Tworzy {@link ServerProxy} i nasłuchuje.
+     */
     public void connectToServer() {
         try {
             Socket socket = new Socket(host, port);
@@ -35,7 +50,12 @@ public class Client implements GameClientObserver {
         }
     }
 
-    // sending move
+    /**
+     * Wysyła prośbe o ruch do serwera.
+     *
+     * @param row Wysokość na planszy (0-18).
+     * @param col Długość na planszy (0-18).
+     */
     public void sendMove(int row, int col) {
         // Pozwalamy na ruch tylko, jeśli mamy połączenie i jest nasza tura
         if (server != null && myTurn) {
@@ -45,7 +65,9 @@ public class Client implements GameClientObserver {
             gui.updateStatus("Weryfikacja ruchu...");
         }
     }
-
+    /**
+     * Wysyła akcje "PASS" do serwera, pomija ture gracza.
+     */
     public void sendPass() {
 
         if (server != null && myTurn) {
@@ -60,6 +82,9 @@ public class Client implements GameClientObserver {
         }
     }
 
+    /**
+     * Wysyła akcje "SURRENDER" do serwera, koniec gry.
+     */
     public void sendSurrender() {
         if (server != null) {
             System.out.println("Wysyłam PODDANIE");
@@ -68,6 +93,9 @@ public class Client implements GameClientObserver {
         }
     }
 
+    /**
+     * Zamyka połączenie.
+     */
     public void close() {
         try {
             if (server != null) server.close();
@@ -76,8 +104,11 @@ public class Client implements GameClientObserver {
         }
     }
 
-    // reaction for comunicats from server
-
+    /**
+     * Wywołane na starcie gry. Ustawia kolor gracza i ustala pierwszą ture.
+     *
+     * @param myColor Kolor przydzielony do gracza (BLACK or WHITE).
+     */
     @Override
     public void onGameStart(Stone myColor) {
         this.myStone = myColor;
@@ -87,11 +118,11 @@ public class Client implements GameClientObserver {
         gui.updateStatus(myTurn ? "Twoja tura! Postaw kamień." : "Ruch przeciwnika...");
     }
 
-    @Override
-    public void onStonePlaced(int row, int col, Stone stone) {
-
-    }
-
+    /**
+     * Aktualizuje GUI z nową planszą.
+     *
+     * @param grid Nowa plansza.
+     */
     @Override
     public void onBoardUpdate(Stone[][] grid) {
         // Upadeting board
@@ -103,6 +134,11 @@ public class Client implements GameClientObserver {
         });
     }
 
+    /**
+     * Obsługuje różne akcje gry otrzymane z serwera.
+     *
+     * @param action Syngał otrzymany z serwera.
+     */
     @Override
     public void onGameAction(GameAction action) {
         // scenarios
